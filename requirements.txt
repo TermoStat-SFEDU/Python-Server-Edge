@@ -1,6 +1,6 @@
 # File: requirements.txt
 # Django & Web Server
-django==4.2.16
+django
 daphne
 psycopg2-binary
 whitenoise[brotli]
@@ -8,8 +8,8 @@ django-cors-headers
 bw2io[multifunctional]
 
 # Django REST Framework & API Docs
-djangorestframework==3.15.2
-drf-spectacular==0.28.0
+djangorestframework
+drf-spectacular
 
 # Admin Theme
 django-unfold @ git+https://github.com/unfoldadmin/django-unfold.git
