@@ -54,13 +54,21 @@ jobs:
       # Шаг 6: Сборка и публикация образа.
       # 'push' установлен в 'true' только для push-событий в ветку main.
       # Для Pull Request образ будет только собираться, что позволяет проверить его валидность.
-      # 'platforms' указывает, для каких архитектур собирать образ.
+      # 'platforms' указывает, для каких архитектур собирать образ, обеспечивая максимальную совместимость.
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: >
+            linux/amd64,
+            linux/arm64,
+            linux/arm/v7,
+            linux/arm/v6,
+            linux/386,
+            linux/ppc64le,
+            linux/s390x,
+            linux/riscv64
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
