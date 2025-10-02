@@ -1,4 +1,6 @@
 name: Build and Push Docker Image
+permissions:
+  contents: read
 
 # Этот workflow запускается при каждом push в ветку 'main'
 on:
