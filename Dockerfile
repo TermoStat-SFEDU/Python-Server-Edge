@@ -1,52 +1,42 @@
-# File: Dockerfile
-# ---- Builder Stage ----
-# Этот этап используется для установки зависимостей, включая те, что требуют компиляции.
-FROM python:3.11-bookworm AS builder
+# Stage 1: Build stage
+FROM python:3.11-slim-bullseye AS builder
 
-# Установка системных зависимостей, необходимых для сборки
-# psycopg2-binary и потенциально других пакетов.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
+# Set work directory
 WORKDIR /app
 
-# Создание и активация виртуального окружения
-ENV VIRTUAL_ENV=/opt/venv
-RUN python -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends gcc git
 
-# Копирование файла зависимостей и их установка
+# Install python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
 
 
-# ---- Final Stage ----
-# Этот этап создает финальный, легковесный образ для запуска приложения.
-FROM python:3.11-slim-bookworm AS final
+# Stage 2: Final stage
+FROM python:3.11-slim-bullseye
 
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Set work directory
 WORKDIR /app
 
-# Установка системных зависимостей, необходимых для работы приложения в runtime.
-# libpq5 требуется для psycopg2.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    libpq5 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Copy python dependencies from builder
+COPY --from=builder /app/wheels /wheels
+COPY --from=builder /app/requirements.txt .
+RUN pip install --no-cache /wheels/*
 
-# Копирование виртуального окружения с установленными пакетами из builder stage.
-COPY --from=builder /opt/venv /opt/venv
+# Copy entrypoint script and grant execute permissions
+COPY ./entrypoint.sh .
+RUN chmod +x ./entrypoint.sh
 
-# Копирование исходного кода приложения
+# Copy project
 COPY . .
 
-# Активация виртуального окружения
-ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-
-# Указание точки входа
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Expose port
+EXPOSE 8000
