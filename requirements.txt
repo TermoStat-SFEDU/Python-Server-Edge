@@ -1,6 +1,6 @@
 # File: requirements.txt
 # Django & Web Server
-django==4.2.16
+django==4.2.25
 daphne
 psycopg2-binary
 whitenoise[brotli]
