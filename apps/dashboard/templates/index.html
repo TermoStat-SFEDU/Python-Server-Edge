@@ -1,0 +1,295 @@
+{% extends "dashboard_base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Statistic Cards -->
+    <div id="stats-container" class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <!-- Stat cards will be injected here by JavaScript -->
+    </div>
+
+    <!-- Main System-Wide Chart -->
+    <div class="p-6 bg-white border rounded-md shadow-sm border-base-200 dark:bg-base-800 dark:border-base-700">
+        <h3 class="mb-4 text-lg font-semibold text-font-important-light dark:text-font-important-dark">Средняя температура по системе (24ч)</h3>
+        <div id="avgTempChart" class="w-full h-80"></div>
+    </div>
+
+    <!-- Device Status Panel and Charts Grid -->
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <!-- Device Status Panel -->
+        <div class="p-6 bg-white border rounded-md shadow-sm lg:col-span-1 border-base-200 dark:bg-base-800 dark:border-base-700">
+            <h3 class="mb-4 text-lg font-semibold text-font-important-light dark:text-font-important-dark">Статус устройств</h3>
+            <div id="device-status-list" class="space-y-3 overflow-y-auto max-h-96">
+                <!-- Device status items will be injected here -->
+            </div>
+        </div>
+        
+        <!-- Per-Device Charts Container -->
+        <div class="lg:col-span-2">
+            <h2 class="mb-4 text-xl font-bold text-font-important-light dark:text-font-important-dark">Показания по устройствам (последние 50)</h2>
+            <div id="per-device-charts" class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <!-- Device charts will be injected here -->
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let charts = {}; // Store chart instances to update them later
+
+    const isDarkMode = () => document.documentElement.classList.contains('dark');
+
+    // Helper to format numbers nicely
+    const formatNumber = (num) => num.toLocaleString('ru-RU');
+
+    // Helper to get theme-specific colors for charts
+    const getThemeOptions = () => {
+        const dark = isDarkMode();
+        return {
+            theme: {
+                mode: dark ? 'dark' : 'light',
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 2,
+            },
+            markers: {
+                size: 0,
+            },
+            grid: {
+                borderColor: dark ? '#374151' : '#E5E7EB',
+                strokeDashArray: 4,
+            },
+            chart: {
+                background: 'transparent',
+                toolbar: {
+                    show: true,
+                    tools: {
+                        download: false,
+                        selection: true,
+                        zoom: true,
+                        zoomin: true,
+                        zoomout: true,
+                        pan: true,
+                        reset: true
+                    },
+                },
+            },
+            xaxis: {
+                type: 'datetime',
+                labels: { datetimeUTC: false },
+            },
+            yaxis: {
+                labels: {
+                    formatter: (val) => val.toFixed(1) + ' °C',
+                }
+            },
+            tooltip: {
+                x: {
+                    format: 'dd MMM yyyy, HH:mm:ss',
+                },
+            },
+            legend: {
+                position: 'top',
+                horizontalAlign: 'right',
+                floating: true,
+                offsetY: -25,
+                offsetX: -5
+            },
+        };
+    };
+
+    // --- RENDER FUNCTIONS ---
+
+    function renderStats(stats) {
+        const container = document.getElementById('stats-container');
+        if (!container) return;
+        
+        const statsMap = [
+            { id: 'total_devices', icon: 'router', title: 'Всего устройств' },
+            { id: 'active_devices', icon: 'wifi', title: 'Активных устройств' },
+            { id: 'readings_last_24h', icon: 'analytics', title: 'Показаний (24ч)' },
+            { id: 'recent_dos_ip', icon: 'gpp_bad', title: 'Последний Throttled IP' },
+        ];
+
+        let html = '';
+        statsMap.forEach(s => {
+            const value = stats[s.id];
+            const displayValue = typeof value === 'number' ? formatNumber(value) : (value || 'Нет');
+            html += `
+                <div class="p-6 bg-white border rounded-md shadow-sm border-base-200 dark:bg-base-800 dark:border-base-700">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-base-500">${s.title}</p>
+                            <p class="text-3xl font-bold text-font-important-light dark:text-font-important-dark">${displayValue}</p>
+                        </div>
+                        <div class="p-2 bg-blue-100 rounded-md dark:bg-blue-500/20">
+                            <span class="text-blue-600 material-symbols-outlined dark:text-blue-400">${s.icon}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function renderAvgTempChart(chartData) {
+        const containerId = 'avgTempChart';
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const seriesData = chartData.labels.map((label, index) => {
+            return [new Date(label).getTime(), chartData.data[index]];
+        });
+
+        const options = {
+            ...getThemeOptions(),
+            series: [{
+                name: 'Средняя t (°C)',
+                data: seriesData,
+            }],
+            xaxis: { ...getThemeOptions().xaxis, title: { text: 'Время' } },
+            yaxis: { ...getThemeOptions().yaxis, title: { text: 'Температура (°C)' } },
+            noData: { text: 'Нет данных для отображения' },
+        };
+
+        if (charts[containerId]) {
+            charts[containerId].updateOptions(options);
+        } else {
+            charts[containerId] = new ApexCharts(container, options);
+            charts[containerId].render();
+        }
+    }
+
+    function renderDeviceListAndCharts(devices) {
+        const listContainer = document.getElementById('device-status-list');
+        const chartsContainer = document.getElementById('per-device-charts');
+        if (!listContainer || !chartsContainer) return;
+
+        listContainer.innerHTML = '';
+        chartsContainer.innerHTML = '';
+
+        if (devices.length === 0) {
+            listContainer.innerHTML = `<div class="p-4 text-center text-base-500">Устройства не найдены.</div>`;
+            chartsContainer.innerHTML = `<div class="p-4 text-center text-base-500 lg:col-span-2">Нет данных для отображения.</div>`;
+            return;
+        }
+
+        devices.forEach(device => {
+            // Render device in the status list
+            const statusStyles = {
+                active: { bg: 'bg-green-100 dark:bg-green-500/20', text: 'text-green-800 dark:text-green-400', label: 'Активен' },
+                warning: { bg: 'bg-yellow-100 dark:bg-yellow-500/20', text: 'text-yellow-800 dark:text-yellow-400', label: 'Предупреждение' },
+                inactive: { bg: 'bg-red-100 dark:bg-red-500/20', text: 'text-red-800 dark:text-red-400', label: 'Неактивен' },
+            };
+            const style = statusStyles[device.status] || statusStyles.inactive;
+            const lastSeen = new Date(device.last_seen).toLocaleString('ru-RU');
+
+            listContainer.innerHTML += `
+                <div class="flex items-center justify-between p-2 rounded-md hover:bg-base-50 dark:hover:bg-base-900/50">
+                    <div>
+                        <p class="font-mono font-medium">${device.ip_address}</p>
+                        <p class="text-xs text-base-500">Последний раз: ${lastSeen}</p>
+                    </div>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${style.bg} ${style.text}">${style.label}</span>
+                </div>
+            `;
+            
+            // Create container for device chart
+            const chartId = `chart-${device.ip_address.replace(/\./g, '-')}`;
+            chartsContainer.innerHTML += `
+                <div class="p-6 bg-white border rounded-md shadow-sm border-base-200 dark:bg-base-800 dark:border-base-700">
+                    <h3 class="mb-4 font-semibold text-font-important-light dark:text-font-important-dark">Устройство: ${device.ip_address}</h3>
+                    <div id="${chartId}" class="w-full h-72"></div>
+                </div>
+            `;
+
+            // Fetch and render the chart for this device
+            fetchDeviceChartData(device.ip_address, chartId);
+        });
+    }
+
+    async function fetchDeviceChartData(ipAddress, containerId) {
+        try {
+            const response = await fetch(`/api/sensor/device/${ipAddress}/readings/`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+            
+            const contactData = [];
+            const nonContactData = [];
+
+            data.forEach(reading => {
+                const timestamp = new Date(reading.timestamp).getTime();
+                if (reading.contact_temp !== null) {
+                    contactData.push([timestamp, reading.contact_temp]);
+                }
+                if (reading.non_contact_temp !== null) {
+                    nonContactData.push([timestamp, reading.non_contact_temp]);
+                }
+            });
+
+            const options = {
+                ...getThemeOptions(),
+                series: [
+                    { name: 'Контактная t (°C)', data: contactData },
+                    { name: 'Бесконтактная t (°C)', data: nonContactData }
+                ],
+                noData: { text: 'Нет данных для отображения' },
+            };
+            
+            const container = document.getElementById(containerId);
+            if(container) {
+                charts[containerId] = new ApexCharts(container, options);
+                charts[containerId].render();
+            }
+
+        } catch (error) {
+            console.error(`Error fetching chart data for ${ipAddress}:`, error);
+            const container = document.getElementById(containerId);
+            if (container) container.innerHTML = `<div class="flex items-center justify-center h-full text-red-500">Не удалось загрузить данные.</div>`;
+        }
+    }
+
+
+    // --- MAIN DATA FETCH AND UPDATE ---
+
+    async function updateDashboard() {
+        try {
+            const response = await fetch('/api/dashboard/');
+            if (!response.ok) throw new Error('Failed to fetch dashboard data');
+            const data = await response.json();
+            
+            renderStats(data.statistics);
+            renderAvgTempChart(data.system_average_temperature_chart);
+            renderDeviceListAndCharts(data.devices);
+
+        } catch (error) {
+            console.error('Error updating dashboard:', error);
+            document.getElementById('stats-container').innerHTML = `<div class="col-span-full p-4 text-center text-red-500">Не удалось загрузить данные.</div>`;
+        }
+    }
+
+    // --- THEME SWITCHER INTEGRATION ---
+
+    const themeSwitcher = document.querySelector('[data-theme-switcher]');
+    if (themeSwitcher) {
+        const observer = new MutationObserver(() => {
+            const newOptions = getThemeOptions();
+            Object.values(charts).forEach(chart => {
+                if(chart) chart.updateOptions(newOptions);
+            });
+        });
+
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class'],
+        });
+    }
+
+    // --- INITIALIZATION ---
+    updateDashboard();
+    setInterval(updateDashboard, 30000); // Update every 30 seconds
+});
+</script>
+{% endblock %}

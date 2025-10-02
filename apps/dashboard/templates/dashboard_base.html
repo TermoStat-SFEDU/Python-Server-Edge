@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель управления системой</title>
+    <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+    
+    <!-- Fonts and Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+    <!-- Libraries -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@latest/dist/driver.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    
+    <!--
+      This inline script runs before the page is rendered to prevent a "flash of incorrect theme".
+      It checks for a user's preference in localStorage and falls back to their system settings.
+    -->
+    <script>
+      (function() {
+        // Design is dark-first, so dark is the default.
+        const theme = localStorage.getItem('adminTheme') || 'dark';
+        if (theme === 'auto') {
+            if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        } else {
+            document.documentElement.setAttribute('data-theme', theme);
+        }
+      })();
+    </script>
+</head>
+<body>
+
+    <div class="page-container">
+        <main class="main-content">
+            <header class="header">
+                <div class="header-main">
+                    <h1>Обзор</h1>
+                    <div class="time-display">
+                        <span id="current-time">--:--</span>
+                        <span>Время</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button id="onboarding-restart-button" type="button" class="icon-button" aria-label="Начать обучение" title="Начать обучение">
+                        <span class="icon material-symbols-outlined" aria-hidden="true">help_outline</span>
+                    </button>
+                    <a href="/api/docs/" class="icon-button" aria-label="Документация API" title="Документация API">
+                        <span class="icon material-symbols-outlined" aria-hidden="true">api</span>
+                    </a>
+                    <div class="control-group">
+                        <div class="select-wrapper">
+                            <select id="update-interval-select" class="control-select">
+                                <option value="5000">5 сек</option>
+                                <option value="15000">15 сек</option>
+                                <option value="30000">30 сек</option>
+                                <option value="60000">1 мин</option>
+                                <option value="0">Выкл</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="theme-switcher" class="theme-switcher">
+                        <button id="theme-toggle-button" type="button" class="icon-button" aria-label="Переключить тему">
+                            <span id="theme-icon" class="icon material-symbols-outlined" aria-hidden="true">brightness_auto</span>
+                        </button>
+                        <div id="theme-dropdown" class="dropdown-menu">
+                            <a href="#" class="dropdown-item" data-theme-preference="light">
+                                <span class="icon material-symbols-outlined" aria-hidden="true">light_mode</span>
+                                <span>Светлая</span>
+                            </a>
+                            <a href="#" class="dropdown-item" data-theme-preference="dark">
+                                <span class="icon material-symbols-outlined" aria-hidden="true">dark_mode</span>
+                                <span>Тёмная</span>
+                            </a>
+                            <a href="#" class="dropdown-item" data-theme-preference="auto">
+                                <span class="icon material-symbols-outlined" aria-hidden="true">brightness_auto</span>
+                                <span>Системная</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-wrapper">
+                <!-- Statistics Cards -->
+                <section id="stats-container" class="grid"></section>
+                
+                <!-- System-wide Average Temperature Chart -->
+                <section id="avg-temp-card" class="card col-span-full">
+                    <h3>Средняя температура системы</h3>
+                    <div id="avgTempChart" class="chart-container"></div>
+                </section>
+
+                <!-- Devices Overview -->
+                <div class="devices-grid">
+                    <section id="device-list-card" class="card device-list-card">
+                        <h3>Статус устройств</h3>
+                        <div id="device-status-list" class="device-list">
+                            <!-- Device items will be injected by JS -->
+                        </div>
+                    </section>
+                    
+                    <div id="per-device-charts" class="grid nested-grid card-group">
+                        <!-- Per-device charts will be injected by JS -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/driver.js@latest/dist/driver.js.iife.js"></script>
+
+    <!-- Main script -->
+    <script src="/static/js/dashboard.js"></script>
+
+</body>
+</html>

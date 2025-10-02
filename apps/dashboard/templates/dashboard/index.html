@@ -1,0 +1,36 @@
+{% extends "dashboard_base.html" %}
+
+{% block content %}
+<div class="content-wrapper">
+    <!-- Statistic Cards -->
+    <div id="stats-container" class="grid grid-cols-4">
+        <!-- Stat cards will be injected here by JavaScript -->
+    </div>
+
+    <!-- Main System-Wide Chart -->
+    <div class="card">
+        <h3>Средняя температура по системе (24ч)</h3>
+        <div id="avgTempChart" class="chart-placeholder"></div>
+    </div>
+
+    <!-- Device Status Panel and Charts Grid -->
+    <div class="grid grid-cols-3">
+        <!-- Device Status Panel -->
+        <div class="card lg-col-span-1">
+            <h3>Статус устройств</h3>
+            <div id="device-status-list" class="device-list">
+                <!-- Device status items will be injected here -->
+            </div>
+        </div>
+        
+        <!-- Per-Device Charts Container -->
+        <div class="lg-col-span-2">
+            <h2>Показания по устройствам (последние 50)</h2>
+            <div id="per-device-charts" class="grid grid-cols-2">
+                <!-- Device charts will be injected here -->
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

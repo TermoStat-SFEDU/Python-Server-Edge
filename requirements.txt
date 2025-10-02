@@ -1,0 +1,20 @@
+# Django & Web Server
+django
+daphne
+psycopg2-binary
+whitenoise[brotli]
+django-cors-headers
+bw2io[multifunctional]
+
+# Django REST Framework & API Docs
+djangorestframework
+drf-spectacular
+
+# Admin Theme
+django-unfold @ git+https://github.com/unfoldadmin/django-unfold.git
+
+# Utilities
+django-solo
+python-dotenv
+requests
+django-apscheduler
