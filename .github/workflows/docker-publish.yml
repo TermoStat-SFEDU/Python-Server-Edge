@@ -42,6 +42,5 @@ jobs:
             linux/amd64,
             linux/arm64,
             linux/amd64/v2,
-            linux/amd64/v3,
-            linux/amd64/v4
+            linux/amd64/v3
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/sensor-app:latest,${{ secrets.DOCKERHUB_USERNAME }}/sensor-app:${{ github.sha }}
