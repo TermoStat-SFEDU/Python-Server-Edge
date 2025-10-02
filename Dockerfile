@@ -1,30 +1,52 @@
-# Use an official Python runtime as a parent image
-FROM python:3.11-slim
+# File: Dockerfile
+# ---- Builder Stage ----
+# Этот этап используется для установки зависимостей, включая те, что требуют компиляции.
+FROM python:3.11-bookworm AS builder
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-# Set work directory
-WORKDIR /app
-
-# Install system dependencies (git is required for pip git installs)
+# Установка системных зависимостей, необходимых для сборки
+# psycopg2-binary и потенциально других пакетов.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-COPY requirements.txt /app/
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+WORKDIR /app
 
-# Copy project
-COPY . /app/
+# Создание и активация виртуального окружения
+ENV VIRTUAL_ENV=/opt/venv
+RUN python -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# --- FIX: Ensure entrypoint.sh has correct line endings and is executable ---
-# 1. Convert CRLF (Windows) line endings to LF (Unix)
-RUN sed -i 's/\r$//' /app/entrypoint.sh
-# 2. Make entrypoint script executable
-RUN chmod +x /app/entrypoint.sh
+# Копирование файла зависимостей и их установка
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose port 8000
+
+# ---- Final Stage ----
+# Этот этап создает финальный, легковесный образ для запуска приложения.
+FROM python:3.11-slim-bookworm AS final
+
+WORKDIR /app
+
+# Установка системных зависимостей, необходимых для работы приложения в runtime.
+# libpq5 требуется для psycopg2.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libpq5 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Копирование виртуального окружения с установленными пакетами из builder stage.
+COPY --from=builder /opt/venv /opt/venv
+
+# Копирование исходного кода приложения
+COPY . .
+
+# Активация виртуального окружения
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Указание точки входа
+ENTRYPOINT ["/app/entrypoint.sh"]
