@@ -12,12 +12,13 @@ class SensorConfigAdmin(ModelAdmin, SingletonModelAdmin):
         "id",
         "period",
         "server_timeout",
+        "temperature_threshold",
         "log_rotation_days",
         "log_rotation_max_count",
         "device_pruning_days",
     )
     fieldsets = (
-        ("Настройки датчиков", {"fields": ("period", "server_timeout")}),
+        ("Настройки датчиков", {"fields": ("period", "server_timeout", "temperature_threshold")}),
         (
             "Ротация данных",
             {

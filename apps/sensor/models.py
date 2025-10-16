@@ -23,6 +23,12 @@ class SensorConfig(SingletonModel):
         default=5,
         help_text="Запретить отправку данных чаще, чем раз в указанное количество секунд с одного IP. Например, значение 5 разрешит 1 запрос каждые 5 секунд. 0 - отключить ограничение.",
     )
+    temperature_threshold = models.FloatField(
+        verbose_name="Пороговое значение температуры (°C)",
+        null=True,
+        blank=True,
+        help_text="Если указано, будет отправлено уведомление при превышении этой температуры. Оставьте пустым, чтобы отключить.",
+    )
 
     # Data Rotation Settings
     log_rotation_days = models.PositiveIntegerField(

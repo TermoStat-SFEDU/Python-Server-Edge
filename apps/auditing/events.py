@@ -9,4 +9,5 @@ EVENT_DEFINITIONS = [
     {"identifier": "ADMIN_LOGIN", "name": "Выполнен вход в панель администратора"},
     {"identifier": "DASHBOARD_VIEWED", "name": "Просмотрена панель мониторинга"},
     {"identifier": "DOS_DETECTED", "name": "Обнаружена DoS-атака"},
+    {"identifier": "TEMP_THRESHOLD_EXCEEDED", "name": "Превышен порог температуры"},
 ]

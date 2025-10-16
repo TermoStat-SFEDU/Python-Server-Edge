@@ -116,9 +116,58 @@ class TemperatureDataAPIView(generics.CreateAPIView):
     serializer_class = TemperatureReadingSerializer
     throttle_classes = [DynamicSensorDataRateThrottle]
 
+    def _check_temperature_threshold(
+        self, reading: TemperatureReading, ip_address: str, device: Device
+    ) -> None:
+        """
+        Check if a temperature reading exceeds the configured threshold and log an event.
+
+        Args:
+            reading: The TemperatureReading instance to check.
+            ip_address: The IP address from which the reading was received.
+            device: The Device associated with the reading.
+        """
+        try:
+            config = SensorConfig.get_solo()
+            threshold = config.temperature_threshold
+
+            if threshold is None:
+                return
+
+            temps = [reading.contact_temp, reading.non_contact_temp]
+            valid_temps = [t for t in temps if t is not None]
+
+            if not valid_temps:
+                return
+
+            max_temp = max(valid_temps)
+
+            if max_temp > threshold:
+                event_logged.send(
+                    sender=self.__class__,
+                    event_identifier="TEMP_THRESHOLD_EXCEEDED",
+                    device=device,
+                    instance=reading,
+                    details={
+                        "ip_address": ip_address,
+                        "threshold": threshold,
+                        "measured_temp": max_temp,
+                        "contact_temp": reading.contact_temp,
+                        "non_contact_temp": reading.non_contact_temp,
+                    },
+                )
+        except SensorConfig.DoesNotExist:
+            # If config does not exist, we cannot check the threshold.
+            # This is unlikely with django-solo but handled for safety.
+            pass
+
     def perform_create(self, serializer: TemperatureReadingSerializer) -> None:
         """
-        Save the new TemperatureReading instance and log the event.
+        Save the new TemperatureReading instance, log events, and check for alerts.
+
+        This method saves the reading, logs the standard DATA_RECEIVED event,
+        and then checks if the temperature exceeds the globally configured
+        threshold, triggering a TEMP_THRESHOLD_EXCEEDED event if necessary.
 
         Args:
             serializer: The validated serializer instance containing the data.
@@ -128,6 +177,7 @@ class TemperatureDataAPIView(generics.CreateAPIView):
 
         instance = serializer.save(device=device)
 
+        # Log the standard data reception event
         event_logged.send(
             sender=self.__class__,
             event_identifier="DATA_RECEIVED",
@@ -135,6 +185,9 @@ class TemperatureDataAPIView(generics.CreateAPIView):
             instance=instance,
             details={"ip_address": ip_address, "payload": serializer.validated_data},
         )
+
+        # Check for temperature threshold alert
+        self._check_temperature_threshold(instance, ip_address, device)
 
 
 @extend_schema(
